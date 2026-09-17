@@ -1,0 +1,62 @@
+@import "tailwindcss";
+
+/* Algorithm Studio — dark mode default */
+:root {
+  color-scheme: dark;
+}
+
+@theme {
+  --color-surface-0: #0b0e14;
+  --color-surface-1: #11151f;
+  --color-surface-2: #1a2030;
+  --color-surface-3: #242c40;
+  --color-ink: #e6e9f0;
+  --color-ink-muted: #8b93a7;
+  --color-accent: #56b4e9;      /* Okabe–Ito sky blue */
+  --color-accent-2: #cc79a7;    /* Okabe–Ito reddish purple */
+  --color-ok: #009e73;          /* Okabe–Ito bluish green */
+  --color-warn: #e69f00;        /* Okabe–Ito orange */
+  --color-danger: #d55e00;      /* Okabe–Ito vermillion */
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-surface-0);
+  color: var(--color-ink);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Monaco: currently-executing line (synced with playback) */
+.active-line-highlight {
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  border-left: 2px solid var(--color-accent);
+}
+
+/* Timeline scrubber */
+input[type="range"].timeline {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-surface-3);
+  outline: none;
+  cursor: pointer;
+}
+input[type="range"].timeline::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-surface-0);
+}
+input[type="range"].timeline::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  border: 2px solid var(--color-surface-0);
+}
