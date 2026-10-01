@@ -35,8 +35,8 @@ ENV APP_ENV=production \
     DATABASE_URL=sqlite:////data/app.db
 
 # SQLite lives on a volume so users/submissions survive restarts.
-RUN mkdir /data
-VOLUME /data
+# Volume is configured at the platform level (docker-compose / fly.toml / render.yaml).
+RUN mkdir -p /data
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s \

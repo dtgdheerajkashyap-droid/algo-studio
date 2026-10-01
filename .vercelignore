@@ -5,3 +5,11 @@ dist
 .trae
 .log
 .figma
+Dockerfile
+docker-compose.yml
+backend
+venv
+fly.toml
+railway.toml
+render.yaml
+cloudflared.exe
