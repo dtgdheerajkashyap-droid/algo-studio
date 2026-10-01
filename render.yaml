@@ -1,0 +1,33 @@
+# Render Blueprint — one-click deploy from GitHub.
+#
+# Usage:
+#   1. Push this file to your repo.
+#   2. Go to https://dashboard.render.com → New → Blueprint → select this repo.
+#   3. Render reads this file and creates everything automatically.
+#   4. Set the env vars (JWT_SECRET, GROQ_API_KEY) in the Render dashboard.
+
+services:
+  - type: web
+    name: algo-studio
+    runtime: docker
+    plan: free                       # "free" spins down after 15 min idle; use "starter" ($7/mo) for always-on
+    dockerfilePath: ./Dockerfile
+    region: singapore                # closest to India; alternatives: oregon, frankfurt
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true          # Render auto-generates a 64-char random string
+      - key: GROQ_API_KEY
+        sync: false                  # you'll set this manually in the dashboard
+      - key: FRONTEND_URL
+        value: https://algo-studio.onrender.com   # update after first deploy if name differs
+      - key: DATABASE_URL
+        value: sqlite:////data/app.db
+      - key: STATIC_DIR
+        value: /srv/static
+    disk:
+      name: algo-studio-data
+      mountPath: /data
+      sizeGB: 1                      # free tier allows 1 GB

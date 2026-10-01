@@ -1,0 +1,26 @@
+# Railway deployment config.
+#
+# Railway auto-detects the Dockerfile; this file just pins the settings.
+#
+# Deploy:
+#   1. Go to https://railway.app → New Project → Deploy from GitHub Repo
+#   2. Select dtgdheerajkashyap-droid/algo-studio
+#   3. Add env vars in the dashboard:
+#        APP_ENV=production
+#        JWT_SECRET=<openssl rand -hex 32>
+#        GROQ_API_KEY=gsk_...
+#        FRONTEND_URL=https://<your-app>.up.railway.app
+#        DATABASE_URL=sqlite:////data/app.db
+#        STATIC_DIR=/srv/static
+#   4. Railway builds from the Dockerfile and deploys automatically.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "./Dockerfile"
+
+[deploy]
+startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

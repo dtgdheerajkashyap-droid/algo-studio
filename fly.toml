@@ -1,0 +1,53 @@
+# Fly.io deployment config.
+#
+# Deploy:
+#   1. Install flyctl: https://fly.io/docs/flyctl/install/
+#   2. fly auth login
+#   3. fly launch --no-deploy              # creates the app on Fly
+#   4. fly volumes create app_data --size 1 --region maa
+#   5. fly secrets set JWT_SECRET=$(openssl rand -hex 32) GROQ_API_KEY=gsk_... APP_ENV=production
+#   6. fly deploy
+#
+# Your app will be at: https://algo-studio.fly.dev
+
+app = "algo-studio"
+primary_region = "maa"               # Mumbai — closest to India
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_ENV = "production"
+  DATABASE_URL = "sqlite:////data/app.db"
+  STATIC_DIR = "/srv/static"
+  # FRONTEND_URL is set after first deploy (https://<app-name>.fly.dev)
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"        # scale to zero when idle (free tier friendly)
+  auto_start_machines = true         # wake up on request
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[mounts]
+  source = "app_data"
+  destination = "/data"
+
+[[checks]]
+  name = "health"
+  port = 8000
+  type = "http"
+  method = "GET"
+  path = "/health"
+  interval = "30s"
+  timeout = "5s"

@@ -34,3 +34,7 @@ Thumbs.db
 
 # Docker
 *.log
+
+# Deployment tools
+cloudflared.exe
+.fly/
