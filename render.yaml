@@ -4,7 +4,7 @@
 #   1. Push this file to your repo.
 #   2. Go to https://dashboard.render.com → New → Blueprint → select this repo.
 #   3. Render reads this file and creates everything automatically.
-#   4. Set the env vars (JWT_SECRET, GROQ_API_KEY) in the Render dashboard.
+#   4. Set the GROQ_API_KEY env var in the Render dashboard.
 
 services:
   - type: web
@@ -22,12 +22,8 @@ services:
       - key: GROQ_API_KEY
         sync: false                  # you'll set this manually in the dashboard
       - key: FRONTEND_URL
-        value: https://algo-studio.onrender.com   # update after first deploy if name differs
+        value: https://algo-studio.onrender.com
       - key: DATABASE_URL
-        value: sqlite:////data/app.db
+        value: sqlite:///./app.db
       - key: STATIC_DIR
         value: /srv/static
-    disk:
-      name: algo-studio-data
-      mountPath: /data
-      sizeGB: 1                      # free tier allows 1 GB
