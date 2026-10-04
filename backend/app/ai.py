@@ -5,25 +5,26 @@ is False, submissions skip AI feedback, and the tutor streams a friendly
 "not configured" message instead of erroring.
 
 Provider order (first configured wins; all are free or have free tiers):
-  1. Anthropic (ANTHROPIC_API_KEY)     — claude-3-5-sonnet
+  1. Anthropic (ANTHROPIC_API_KEY)     — claude-opus-5-5 (override: ANTHROPIC_MODEL)
   2. OpenAI    (OPENAI_API_KEY)        — gpt-4o-mini
   3. Groq      (GROQ_API_KEY)          — llama-3.3-70b-versatile  (free tier: 14k req/day)
   4. OpenRouter(OPENROUTER_API_KEY)    — mistral-7b-instruct:free  (free models available)
-  5. Google    (GEMINI_API_KEY)        — gemini-1.5-flash          (free: 15 RPM / 1M TPD)
+  5. Google    (GEMINI_API_KEY)        — gemini-2.5-flash          (free: 15 RPM / 1M TPD)
   6. Ollama    (OLLAMA_BASE_URL)       — llama3.2 (local, no key, truly free)
 """
 
 import asyncio
+import importlib
 import os
 from collections.abc import AsyncIterator
 
 from .config import settings
 
-ANTHROPIC_MODEL = "claude-3-5-sonnet-20240620"
+ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 GROQ_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "mistralai/mistral-7b-instruct:free")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 
@@ -98,7 +99,9 @@ def configured_provider_info() -> dict:
 def _require_package(pkg: str, install_hint: str):
     """Lazy import with a clear install error for optional SDKs."""
     try:
-        return __import__(pkg)
+        # import_module returns the leaf module ("google.generativeai"), unlike
+        # __import__ which returns the top-level package ("google").
+        return importlib.import_module(pkg)
     except ImportError as e:
         raise RuntimeError(install_hint) from e
 
@@ -227,15 +230,13 @@ def _build_tutor_prompts(algorithm_name: str, statement: str, question: str, his
 
 
 async def _chat_anthropic(system: str, messages: list[dict]) -> AsyncIterator[str]:
-    import anthropic as ant
-
     client = _get_client("anthropic")
     async with client.messages.stream(
         model=ANTHROPIC_MODEL,
-        max_tokens=2048,
+        max_tokens=8000,  # thinking is always on for Opus 5.5 and counts toward this
         system=system,
         messages=messages,
-        timeout=ant.types.timeout(_STREAM_TIMEOUT_S),
+        timeout=_STREAM_TIMEOUT_S,
     ) as stream:
         async for text in stream.text_stream:
             yield text
@@ -347,12 +348,10 @@ def _build_feedback_prompt(algorithm_name: str, statement: str, language: str, c
 
 
 async def _feedback_anthropic(prompt: str) -> str | None:
-    import anthropic as ant
-
     client = _get_client("anthropic")
     msg = await client.messages.create(
         model=ANTHROPIC_MODEL,
-        max_tokens=1024,
+        max_tokens=4000,  # headroom for thinking tokens
         system=FEEDBACK_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
         timeout=_FEEDBACK_TIMEOUT_S,

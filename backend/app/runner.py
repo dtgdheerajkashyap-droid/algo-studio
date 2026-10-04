@@ -5,6 +5,12 @@ javac+java are on PATH; otherwise the caller gets a friendly "toolchain not
 installed" error. Judge0 could replace this later behind the same interface.
 
 Security posture (defense-in-depth, not a full sandbox):
+  * When RUNNER_UID/RUNNER_GID are set (the Docker image does this), every
+    child — compiler included — drops to that unprivileged user. Without this,
+    submitted code runs as the server's user and can read the server's
+    secrets via /proc/1/environ, the SQLite file, or `#include "/proc/..."`
+    compile errors, and can kill the server process.
+  * At most MAX_CONCURRENT_RUNS submissions execute at once.
   * Subprocesses get a scrubbed environment (no API keys / JWT secrets).
   * Working dir is an isolated tempdir removed on return.
   * On POSIX platforms, `resource.setrlimit` caps VM, FDs, and CPU.
@@ -14,20 +20,37 @@ Security posture (defense-in-depth, not a full sandbox):
   * Network access is NOT blocked; deploy with container networking policies.
 """
 
+import functools
 import os
 import platform
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
+try:
+    # Imported here, not inside the forked child: importing after fork in a
+    # multithreaded server can deadlock on the import lock.
+    import resource  # POSIX only
+except ImportError:
+    resource = None  # type: ignore[assignment]
+
 from .algorithms import TestCase
+from .config import settings
 
 RUN_TIMEOUT_S = 5
 COMPILE_TIMEOUT_S = 30
 MAX_OUTPUT_CHARS = 10_000
+QUEUE_WAIT_S = 30
+
+_run_slots = threading.BoundedSemaphore(max(1, settings.max_concurrent_runs))
+
+
+class RunnerBusy(Exception):
+    """All execution slots stayed occupied for QUEUE_WAIT_S."""
 
 # Scrubbed subprocess environment — only these variables pass through.
 # Omits JWT_SECRET, API keys, DB URLs, AWS/GCP metadata env, etc.
@@ -103,17 +126,13 @@ def _split_drive(path: str) -> tuple[str, str]:
     return "", path
 
 
-def _apply_posix_rlimits(*, max_mem_mb: int = 256) -> None:
+def _apply_posix_rlimits(*, max_mem_mb: int = 256, limit_procs: bool = False) -> None:
     """Best-effort POSIX resource cap (memory / fds / CPU). No-op on Windows.
 
     Called via `preexec_fn` inside each test subprocess — not applied during
     compile steps since g++ can legitimately use >256 MB on heavy templates.
     """
-    if platform.system() == "Windows":
-        return
-    try:
-        import resource  # type: ignore[attr-defined]
-    except ImportError:
+    if resource is None:
         return
     max_mem_bytes = max_mem_mb * 1024 * 1024
     try:
@@ -126,13 +145,44 @@ def _apply_posix_rlimits(*, max_mem_mb: int = 256) -> None:
         pass
     # Hard CPU wall (beyond the subprocess timeout — safety net for runaway procs)
     try:
-        resource.setrlimit(resource.RLIMIT_CPU, (RUN_TIMEOUT_S + 2, 0))
+        # soft < hard is required; (soft, 0) raises ValueError and was a no-op.
+        resource.setrlimit(resource.RLIMIT_CPU, (RUN_TIMEOUT_S + 2, RUN_TIMEOUT_S + 3))
     except (ValueError, OSError):
         pass
     try:
         resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
     except (ValueError, OSError, AttributeError):
         pass
+    # Fork-bomb guard. NPROC is counted per uid, so it's only safe when the
+    # child runs as the dedicated runner user (decided by the parent — inside
+    # the child we've already dropped root and can't tell).
+    if limit_procs:
+        try:
+            resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+        except (ValueError, OSError, AttributeError):
+            pass
+
+
+def _sandbox_user() -> tuple[int, int] | None:
+    """(uid, gid) to drop to, or None when not configured / not possible."""
+    if settings.runner_uid is None or platform.system() == "Windows":
+        return None
+    if os.geteuid() != 0:  # can't switch users without root
+        return None
+    gid = settings.runner_gid if settings.runner_gid is not None else settings.runner_uid
+    return settings.runner_uid, gid
+
+
+def _hand_workdir_to_sandbox(workdir: Path) -> None:
+    """Let the sandbox user read sources and write build outputs in workdir."""
+    user = _sandbox_user()
+    if user is None:
+        return
+    uid, gid = user
+    for root, dirs, files in os.walk(workdir):
+        os.chown(root, uid, gid)
+        for name in files:
+            os.chown(os.path.join(root, name), uid, gid)
 
 
 def _run_kwargs(*, rlimits: bool = False, workdir: Path) -> dict:
@@ -142,9 +192,19 @@ def _run_kwargs(*, rlimits: bool = False, workdir: Path) -> dict:
         "text": True,
         "capture_output": True,
     }
+    sandbox = _sandbox_user()
+    if sandbox is not None:
+        # Every child drops to the sandbox user — compile steps too, since
+        # `#include "/proc/1/environ"` would otherwise echo server secrets
+        # back in the compiler error. subprocess switches uid/gid before
+        # running preexec_fn, so the rlimits below are set as that user.
+        kwargs["user"], kwargs["group"] = sandbox
+        kwargs["extra_groups"] = []
     if rlimits and platform.system() != "Windows":
-        # preexec_fn runs in the child after fork, before exec — perfect for rlimits.
-        kwargs["preexec_fn"] = lambda: _apply_posix_rlimits()
+        # preexec_fn runs in the child after fork, before exec.
+        kwargs["preexec_fn"] = functools.partial(
+            _apply_posix_rlimits, limit_procs=sandbox is not None
+        )
     return kwargs
 
 
@@ -242,7 +302,19 @@ def _run_tests(cmd: list[str], tests: list[TestCase], cwd: Path) -> RunReport:
 
 
 def run_submission(language: str, code: str, tests: list[TestCase]) -> RunReport:
-    """Compile (if needed) and run `code` against every test case."""
+    """Compile (if needed) and run `code` against every test case.
+
+    Blocks for a free execution slot; raises RunnerBusy if none frees up.
+    """
+    if not _run_slots.acquire(timeout=QUEUE_WAIT_S):
+        raise RunnerBusy()
+    try:
+        return _run_submission(language, code, tests)
+    finally:
+        _run_slots.release()
+
+
+def _run_submission(language: str, code: str, tests: list[TestCase]) -> RunReport:
     with tempfile.TemporaryDirectory(prefix="algostudio-") as tmp:
         workdir = Path(tmp)
         compile_kw = _run_kwargs(rlimits=False, workdir=workdir)
@@ -250,6 +322,7 @@ def run_submission(language: str, code: str, tests: list[TestCase]) -> RunReport
         if language == "python":
             src = workdir / "main.py"
             src.write_text(code, encoding="utf-8")
+            _hand_workdir_to_sandbox(workdir)
             return _run_tests([sys.executable, str(src)], tests, workdir)
 
         if language == "cpp":
@@ -259,6 +332,7 @@ def run_submission(language: str, code: str, tests: list[TestCase]) -> RunReport
             src = workdir / "main.cpp"
             exe = workdir / ("main.exe" if sys.platform == "win32" else "main")
             src.write_text(code, encoding="utf-8")
+            _hand_workdir_to_sandbox(workdir)
             compile_proc = subprocess.run(
                 [gpp, "-O2", "-std=c++17", str(src), "-o", str(exe)],
                 timeout=COMPILE_TIMEOUT_S,
@@ -278,6 +352,7 @@ def run_submission(language: str, code: str, tests: list[TestCase]) -> RunReport
                 raise ToolchainMissing("Java", "a JDK (javac + java)")
             src = workdir / "Main.java"
             src.write_text(code, encoding="utf-8")
+            _hand_workdir_to_sandbox(workdir)
             compile_proc = subprocess.run(
                 [javac, str(src)],
                 timeout=COMPILE_TIMEOUT_S,

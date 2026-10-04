@@ -1,10 +1,12 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-PyJWT
-python-dotenv
-email-validator
-anthropic
-openai
-httpx
-pytest
+# Runtime dependencies. Upper bounds keep a fresh deploy from silently pulling
+# a breaking major release. Dev/test-only deps live in requirements-dev.txt.
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+sqlalchemy>=2.0,<2.1
+psycopg[binary]>=3.2,<4
+PyJWT>=2.8,<3
+python-dotenv>=1.0,<2
+email-validator>=2.1,<3
+anthropic>=0.70,<1
+openai>=1.40,<3
+httpx>=0.27,<1

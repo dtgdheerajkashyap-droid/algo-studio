@@ -153,8 +153,9 @@ def set_auth_cookies(response: Response, user_id: int, db: Session | None = None
 
 
 def clear_auth_cookies(response: Response) -> None:
+    secure = settings.is_production
     for name in ("access_token", "refresh_token", "csrf_token"):
-        response.delete_cookie(name, path="/")
+        response.delete_cookie(name, path="/", secure=secure, samesite="lax")
 
 
 def user_id_and_jti_from_refresh_cookie(request: Request) -> tuple[int, str] | None:
@@ -188,7 +189,8 @@ def check_csrf(request: Request) -> None:
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     token = request.cookies.get("access_token")
-    user_id = _decode_token(token, "access")[0] if token and _decode_token(token, "access") else None
+    decoded = _decode_token(token, "access") if token else None
+    user_id = decoded[0] if decoded else None
     if user_id is None:
         raise HTTPException(status_code=401, detail="Not authenticated")
     user = db.get(User, user_id)

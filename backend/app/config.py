@@ -1,5 +1,6 @@
 """App configuration — reads backend/.env (all keys optional in dev)."""
 
+import logging
 import os
 from pathlib import Path
 
@@ -7,6 +8,39 @@ from dotenv import load_dotenv
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BACKEND_DIR / ".env")
+
+log = logging.getLogger("algostudio")
+
+
+def _normalize_db_url(url: str) -> str:
+    """Accept the bare postgres:// URLs that Railway/Render/Heroku hand out.
+
+    SQLAlchemy 2 dropped the "postgres" alias and defaults to psycopg2; we ship
+    psycopg 3, so point both spellings at the psycopg driver explicitly.
+    """
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
+def _on_mounted_volume(sqlite_url: str) -> bool:
+    """True if the SQLite file's directory is (inside) a mount point — i.e. a
+    platform volume that survives redeploys, not the container's own layer."""
+    path = Path(sqlite_url.split("///", 1)[-1]).resolve().parent
+    for d in (path, *path.parents):
+        if d == d.parent:  # reached filesystem root
+            return False
+        if os.path.ismount(d):
+            return True
+    return False
+
+
+def _int_env(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except ValueError:
+        return default
 
 
 class Settings:
@@ -19,9 +53,23 @@ class Settings:
     jwt_secret: str = os.environ.get(
         "JWT_SECRET", "dev-secret-change-me-0123456789abcdef"
     )
-    database_url: str = os.environ.get(
-        "DATABASE_URL", f"sqlite:///{BACKEND_DIR / 'app.db'}"
+    database_url: str = _normalize_db_url(
+        os.environ.get("DATABASE_URL") or f"sqlite:///{BACKEND_DIR / 'app.db'}"
     )
+
+    # How many reverse proxies sit in front of the app and append to
+    # X-Forwarded-For. Railway's edge = 1; Vercel rewrite -> Railway = 2.
+    # The client IP is taken that many entries from the right, so callers
+    # can't spoof it by sending their own X-Forwarded-For header.
+    trusted_proxy_hops: int = _int_env("TRUSTED_PROXY_HOPS", 1)
+
+    # Max code submissions executing at once (each may use ~256 MB).
+    max_concurrent_runs: int = _int_env("MAX_CONCURRENT_RUNS", 2)
+
+    # Unprivileged uid/gid that submitted code runs as. Set by the Docker
+    # image; when unset (local dev) code runs as the server's own user.
+    runner_uid: int | None = int(os.environ["RUNNER_UID"]) if os.environ.get("RUNNER_UID") else None
+    runner_gid: int | None = int(os.environ["RUNNER_GID"]) if os.environ.get("RUNNER_GID") else None
 
     # Directory of built frontend assets (vite build output). When it exists,
     # the backend serves the SPA itself — single-container production deploy.
@@ -65,6 +113,13 @@ class Settings:
             )
         if len(self.jwt_secret) < 32:
             raise RuntimeError("JWT_SECRET must be at least 32 characters long.")
+        if self.database_url.startswith("sqlite:") and not _on_mounted_volume(self.database_url):
+            log.warning(
+                "APP_ENV=production with SQLite at %s — this file is wiped on every "
+                "redeploy unless it sits on a persistent volume. Use Postgres "
+                "(DATABASE_URL=postgres://...) or mount a volume at /data.",
+                self.database_url,
+            )
 
 
 settings = Settings()

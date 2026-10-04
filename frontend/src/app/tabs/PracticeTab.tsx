@@ -43,14 +43,15 @@ export function PracticeTab({ def }: { def: AlgorithmDefinition }) {
     setError(null);
     setResult(null);
     try {
-      const res = await api.post<SubmissionResult>('/submissions', {
-        algorithm_id: def.id,
-        language: lang,
-        code: code[lang],
-      });
+      // Generous timeout: tests (up to 5s each) + compile + AI feedback.
+      const res = await api.post<SubmissionResult>(
+        '/submissions',
+        { algorithm_id: def.id, language: lang, code: code[lang] },
+        { timeoutMs: 120_000 },
+      );
       setResult(res);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Submission failed — is the backend running?');
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Submission failed — is the backend running?');
     } finally {
       setSubmitting(false);
     }

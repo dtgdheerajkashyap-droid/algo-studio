@@ -43,6 +43,8 @@ export function AppLayout() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {/* Render nothing until the session probe finishes, so signed-in
+              users don't see a flash of "Sign in" on every page load. */}
           {!ready ? null : user ? (
             <>
               <span className="flex items-center gap-2 text-sm text-ink-muted">

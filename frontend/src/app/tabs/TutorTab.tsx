@@ -62,7 +62,7 @@ export function TutorTab({ def }: { def: AlgorithmDefinition }) {
       }
     } catch (e) {
       if (!(e instanceof DOMException && e.name === 'AbortError')) {
-        setError(e instanceof ApiError ? e.message : 'Chat failed — is the backend running?');
+        setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'Chat failed — is the backend running?');
         setMessages((m) => (m[m.length - 1]?.content === '' ? m.slice(0, -1) : m));
       }
     } finally {

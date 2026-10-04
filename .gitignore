@@ -38,3 +38,11 @@ Thumbs.db
 # Deployment tools
 cloudflared.exe
 .fly/
+
+# Local SQLite database (never commit user data)
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+
+# Stray nested copy of backend/
+backend/backend/

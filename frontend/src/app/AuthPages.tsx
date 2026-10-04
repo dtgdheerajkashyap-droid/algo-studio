@@ -57,7 +57,13 @@ export function LoginPage() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Login failed — is the backend running?');
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Login failed — is the backend running?',
+      );
     } finally {
       setBusy(false);
     }
@@ -129,7 +135,13 @@ export function RegisterPage() {
       await register(email, name, password);
       navigate('/');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Registration failed — is the backend running?');
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Registration failed — is the backend running?',
+      );
     } finally {
       setBusy(false);
     }

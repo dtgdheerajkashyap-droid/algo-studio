@@ -6,7 +6,9 @@ Prod:  the app also serves the built frontend from STATIC_DIR (frontend/dist),
        so one container serves everything.
 """
 
-from fastapi import APIRouter, Depends, FastAPI
+import logging
+
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -31,9 +33,16 @@ def _migrate():
         submissions_cols = {c["name"] for c in inspector.get_columns("submissions")}
         if "updated_at" not in submissions_cols:
             conn.execute(text(
-                "ALTER TABLE submissions ADD COLUMN updated_at DATETIME"
+                "ALTER TABLE submissions ADD COLUMN updated_at TIMESTAMP"
+            ))
+        token_cols = {c["name"] for c in inspector.get_columns("refresh_tokens")}
+        if "revoked_at" not in token_cols:
+            conn.execute(text(
+                "ALTER TABLE refresh_tokens ADD COLUMN revoked_at TIMESTAMP"
             ))
 
+
+logging.basicConfig(level=logging.INFO)
 
 Base.metadata.create_all(bind=engine)
 _migrate()
@@ -52,6 +61,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    path = request.url.path
+    if path.startswith("/assets/"):
+        # Vite fingerprints these filenames, so they never change in place.
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    elif path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    elif response.headers.get("content-type", "").startswith("text/html"):
+        # index.html must be revalidated or clients keep loading stale bundles.
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
 
 # Vite's dev proxy forwards /api/* verbatim (no path rewrite), so everything
 # is mounted under /api.
@@ -81,6 +110,8 @@ if _index.is_file():
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
+        if path == "api" or path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
         candidate = settings.static_dir / path
         # Serve real top-level files (favicon, robots.txt…); guard traversal.
         if (

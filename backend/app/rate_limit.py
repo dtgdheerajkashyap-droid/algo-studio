@@ -110,19 +110,22 @@ limiter = SlidingWindowLimiter(_POLICIES)
 
 
 def client_ip(request) -> str:
-    """Best-effort client IP, honoring X-Forwarded-For when running behind a proxy.
+    """Client IP for rate-limit keys, honoring X-Forwarded-For from trusted proxies.
 
-    We take the *leftmost* non-empty entry of the standard concatenated list,
-    and fall back to the direct peer IP. Never trust the header for security
-    decisions (the header can be spoofed by a direct caller) — usage here is
-    for rate limiting keys only, which degrades gracefully when spoofed.
+    Each proxy *appends* the address it received the request from, so only the
+    rightmost TRUSTED_PROXY_HOPS entries were written by infrastructure we
+    trust; anything to the left of those is client-supplied and spoofable
+    (taking the leftmost entry would let an attacker dodge every limit by
+    sending a random X-Forwarded-For per request).
     """
+    from .config import settings
+
+    hops = settings.trusted_proxy_hops
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        for candidate in forwarded.split(","):
-            candidate = candidate.strip()
-            if candidate:
-                return candidate
+    if forwarded and hops > 0:
+        entries = [e.strip() for e in forwarded.split(",") if e.strip()]
+        if entries:
+            return entries[-hops] if len(entries) >= hops else entries[0]
     peer = getattr(request, "client", None)
     if peer is not None:
         return peer.host or "unknown"

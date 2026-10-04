@@ -17,7 +17,7 @@ from ..algorithms import ALGORITHMS
 from ..db import get_db
 from ..models import Submission, User
 from ..rate_limit import client_ip, limiter
-from ..runner import RunReport, ToolchainMissing, run_submission
+from ..runner import RunnerBusy, RunReport, ToolchainMissing, run_submission
 from ..security import get_current_user
 
 router = APIRouter(tags=["submissions"])
@@ -68,6 +68,11 @@ async def create_submission(
         )
     except ToolchainMissing as e:
         raise HTTPException(status_code=422, detail=str(e))
+    except RunnerBusy:
+        raise HTTPException(
+            status_code=503,
+            detail="The code runner is busy right now — please try again in a few seconds.",
+        )
 
     # Compile errors: surface the message as a single failed "compile" entry.
     results = [r.to_dict() for r in report.results]

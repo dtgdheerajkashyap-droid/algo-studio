@@ -7,19 +7,24 @@
 #   2. Select dtgdheerajkashyap-droid/algo-studio
 #   3. Add env vars in the dashboard:
 #        APP_ENV=production
-#        JWT_SECRET=<openssl rand -hex 32>
+#        JWT_SECRET=<openssl rand -hex 32>   (keep it fixed — changing it logs everyone out)
 #        GROQ_API_KEY=gsk_...
 #        FRONTEND_URL=https://<your-app>.up.railway.app
-#        DATABASE_URL=sqlite:////data/app.db
-#        STATIC_DIR=/srv/static
-#   4. Railway builds from the Dockerfile and deploys automatically.
+#   4. PERSISTENCE — pick ONE, or all accounts/submissions vanish on every deploy:
+#        a) Add a Postgres service and set DATABASE_URL=${{Postgres.DATABASE_URL}}
+#        b) Settings → Volumes → add a volume mounted at /data (keeps SQLite)
+#   5. Railway builds from the Dockerfile and deploys automatically. The app
+#      listens on Railway's injected $PORT.
+#   If the site is reached through the Vercel rewrite (vercel.json), set
+#   TRUSTED_PROXY_HOPS=2 so rate limits key on the real client IP.
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "./Dockerfile"
 
 [deploy]
-startCommand = "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+# No startCommand: the Dockerfile CMD binds to $PORT. A hardcoded
+# "--port 8000" here breaks as soon as Railway assigns a different port.
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"

@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app import ai
+from app import ai, rate_limit
 from app.config import settings
 from app.db import Base, get_db
 from app.main import app
@@ -60,6 +60,10 @@ def client(db_session_factory, monkeypatch):
     monkeypatch.setattr(ai, "is_configured", lambda: False)
     monkeypatch.setattr(settings, "anthropic_api_key", None)
     monkeypatch.setattr(settings, "openai_api_key", None)
+
+    # The limiter is a process-wide singleton; give each test empty buckets so
+    # registrations in earlier tests don't throttle later ones.
+    monkeypatch.setattr(rate_limit.limiter, "_buckets", rate_limit.defaultdict(dict))
 
     with TestClient(app) as c:
         yield c

@@ -7,6 +7,10 @@
 #
 #   docker build -t algorithm-studio .
 #   docker run -p 8000:8000 -e JWT_SECRET=$(openssl rand -hex 32) algorithm-studio
+#
+# The server listens on $PORT (Railway/Render/Fly inject it), default 8000.
+# Submitted code runs as the unprivileged "runner" user (RUNNER_UID), never as
+# the server's user — see app/runner.py.
 
 # ---------------------------------------------------------------- frontend
 FROM node:22-alpine AS frontend
@@ -34,9 +38,11 @@ ENV APP_ENV=production \
     STATIC_DIR=/srv/static \
     DATABASE_URL=sqlite:////data/app.db
 
-# SQLite lives on a volume so users/submissions survive restarts.
-# Volume is configured at the platform level (docker-compose / fly.toml / render.yaml).
-RUN mkdir -p /data
+# SQLite lives on a volume so users/submissions survive restarts. The volume
+# MUST be attached at the platform level (Railway: Settings → Volumes, mount
+# path /data) — without one, every redeploy starts from an empty database.
+# Alternatively set DATABASE_URL to a Postgres URL and /data is unused.
+RUN mkdir -p /data && chmod 700 /data
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s \

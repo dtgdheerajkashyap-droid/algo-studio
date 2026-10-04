@@ -10,6 +10,7 @@
 """
 
 import secrets
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -33,6 +34,17 @@ from ..security import (
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# A page that fires several API calls right as the access token expires sends
+# several /auth/refresh requests carrying the same refresh token. Only the
+# first wins the rotation; the others present a just-revoked jti. Within this
+# window that's a benign race, not token theft, so don't nuke the session.
+REFRESH_REUSE_GRACE = timedelta(seconds=30)
+
+
+def _as_utc(dt: datetime) -> datetime:
+    # SQLite hands back naive datetimes even for timezone=True columns.
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 class RegisterBody(BaseModel):
@@ -122,6 +134,9 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
     # Reuse / theft detection: if the row is already revoked, the holder is
     # presenting a stale jti — invalidate the user's whole token family.
     if row.revoked:
+        if row.revoked_at and datetime.now(timezone.utc) - _as_utc(row.revoked_at) < REFRESH_REUSE_GRACE:
+            set_auth_cookies(response, user_id, db=db)
+            return
         db.query(RefreshToken).filter(RefreshToken.user_id == user_id).update(
             {RefreshToken.revoked: True}, synchronize_session=False
         )
@@ -130,13 +145,23 @@ def refresh(request: Request, response: Response, db: Session = Depends(get_db))
         raise HTTPException(status_code=401, detail="Session expired — please sign in again")
 
     row.revoked = True
+    row.revoked_at = datetime.now(timezone.utc)
     db.add(row)
     db.commit()
     set_auth_cookies(response, user_id, db=db)
 
 
 @router.post("/logout", status_code=204)
-def logout(response: Response):
+def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    # Revoke server-side too, so a copied refresh cookie stops working.
+    # revoked_at stays NULL on purpose: the reuse grace window is only for
+    # rotation races, never for a token the user explicitly signed out of.
+    decoded = user_id_and_jti_from_refresh_cookie(request)
+    if decoded is not None:
+        db.query(RefreshToken).filter(RefreshToken.jti == decoded[1]).update(
+            {RefreshToken.revoked: True}, synchronize_session=False
+        )
+        db.commit()
     clear_auth_cookies(response)
 
 
@@ -161,7 +186,8 @@ def google_start(response: Response):
     )
     redirect = RedirectResponse(f"{GOOGLE_AUTH_URL}?{params}")
     redirect.set_cookie(
-        "oauth_state", state, max_age=600, httponly=True, samesite="lax", path="/"
+        "oauth_state", state, max_age=600, httponly=True, samesite="lax",
+        secure=settings.is_production, path="/",
     )
     return redirect
 
@@ -173,7 +199,7 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     code = request.query_params.get("code")
     state = request.query_params.get("state")
     saved_state = request.cookies.get("oauth_state")
-    if not code or not state or state != saved_state:
+    if not code or not state or not saved_state or not secrets.compare_digest(state, saved_state):
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
 
     async with httpx.AsyncClient(timeout=15) as client:

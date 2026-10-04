@@ -3,7 +3,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://algo-studio.onrender.com/api/:path*"
+      "destination": "https://algo-studio-production.up.railway.app/api/:path*"
     },
     {
       "source": "/((?!assets/|favicon.svg|icons.svg).*)",
@@ -12,9 +12,29 @@
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/assets/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Credentials", "value": "true" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]

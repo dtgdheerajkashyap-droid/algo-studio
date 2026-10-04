@@ -4,6 +4,8 @@ Frontend (TutorTab) reads the raw response body chunk by chunk via streamPost;
 history excludes the current question.
 """
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -20,16 +22,18 @@ MAX_HISTORY = 30
 
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=8000)
 
 
+# Every field is size-capped: the whole body is forwarded to a paid LLM API,
+# so an unbounded history/context is a direct cost-amplification vector.
 class ChatBody(BaseModel):
-    algorithm_id: str
+    algorithm_id: str = Field(max_length=64)
     question: str = Field(min_length=1, max_length=4000)
-    history: list[ChatMessage] = []
-    step: int = 0
-    context: list[dict] = []
+    history: list[ChatMessage] = Field(default=[], max_length=100)
+    step: int = Field(default=0, ge=0)
+    context: list[dict] = Field(default=[], max_length=200)
 
 
 @router.post("/chat")
