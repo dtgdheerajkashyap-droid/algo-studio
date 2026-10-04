@@ -247,190 +247,208 @@ class TestReferenceSolutionsPass:
             "print(' '.join(fmt(x) for x in dist))\n"
         ),
         "k-nearest-neighbors": (
-            "import sys\n"
-            "import math\n"
-            "def knn_predict(pts, k_val, qx, qy):\n"
-            "    scored = []\n"
-            "    for i, (px, py, lab) in enumerate(pts):\n"
-            "        dx = px - qx; dy = py - qy\n"
-            "        dist = math.sqrt(dx * dx + dy * dy)\n"
-            "        scored.append((dist, str(i), lab))\n"
-            "    scored.sort(key=lambda t: (t[0], t[1]))\n"
-            "    top = scored[:k_val]\n"
-            "    if not top:\n"
-            "        return -1\n"
-            "    counts = {}\n"
-            "    for _, _, lab in top:\n"
-            "        counts[lab] = counts.get(lab, 0) + 1\n"
-            "    best_lab = None; best_cnt = -1\n"
-            "    for lab in sorted(counts.keys(), key=lambda x: (x, str(x))):\n"
-            "        c = counts[lab]\n"
-            "        if c > best_cnt:\n"
-            "            best_cnt = c; best_lab = lab\n"
-            "    return best_lab\n"
-            "def main():\n"
-            "    data = sys.stdin.read().split()\n"
-            "    idx = 0\n"
-            "    N = int(data[idx]); idx += 1\n"
-            "    k = int(data[idx]); idx += 1\n"
-            "    Q = int(data[idx]); idx += 1\n"
-            "    pts = []\n"
-            "    for _ in range(N):\n"
-            "        x = float(data[idx]); idx += 1\n"
-            "        y = float(data[idx]); idx += 1\n"
-            "        lab = int(data[idx]); idx += 1\n"
-            "        pts.append((x, y, lab))\n"
-            "    out = []\n"
-            "    k_use = max(1, k)\n"
-            "    for _ in range(Q):\n"
-            "        qx = float(data[idx]); idx += 1\n"
-            "        qy = float(data[idx]); idx += 1\n"
-            "        out.append(str(knn_predict(pts, k_use, qx, qy)))\n"
-            "    print(' '.join(out))\n"
-            "if __name__ == '__main__':\n"
-            "    main()\n"
+            'import sys\n'
+            'import math\n'
+            '\n'
+            'def knn_classify(pts, k, qx, qy):\n'
+            '    n = len(pts)\n'
+            '    dists = []\n'
+            '    for i in range(n):\n'
+            '        x, y, label = pts[i]\n'
+            '        dx = x - qx\n'
+            '        dy = y - qy\n'
+            '        d = math.sqrt(dx * dx + dy * dy)\n'
+            '        dists.append((d, i, label))\n'
+            '    dists.sort()\n'
+            '    cnt = {}\n'
+            '    for i in range(min(k, len(dists))):\n'
+            '        label = dists[i][2]\n'
+            '        cnt[label] = cnt.get(label, 0) + 1\n'
+            '    best_label, best_cnt = -1, -1\n'
+            '    for label, count in sorted(cnt.items()):  # ascending: vote ties -> smaller label\n'
+            '        if count > best_cnt:\n'
+            '            best_cnt = count\n'
+            '            best_label = label\n'
+            '    return best_label\n'
+            '\n'
+            'def main():\n'
+            '    data = sys.stdin.read().split()\n'
+            '    idx = 0\n'
+            '    N, k, Q = int(data[idx]), int(data[idx+1]), int(data[idx+2])\n'
+            '    idx += 3\n'
+            '    pts = []\n'
+            '    for _ in range(N):\n'
+            '        x = int(data[idx]); y = int(data[idx+1]); label = int(data[idx+2])\n'
+            '        idx += 3\n'
+            '        pts.append((x, y, label))\n'
+            '    out = []\n'
+            '    for _ in range(Q):\n'
+            '        qx = int(data[idx]); qy = int(data[idx+1])\n'
+            '        idx += 2\n'
+            '        out.append(str(knn_classify(pts, k, qx, qy)))\n'
+            '    print(" ".join(out))\n'
+            '\n'
+            'if __name__ == "__main__":\n'
+            '    main()\n'
         ),
         "k-means": (
-            "import sys\n"
-            "def kmeans_lcg(pts, k, seed, max_iter):\n"
-            "    N = len(pts)\n"
-            "    if k <= 0 or N == 0:\n"
-            "        return [0] * N\n"
-            "    if seed == 0:\n"
-            "        centroids = [pts[i] for i in range(min(k, N))]\n"
-            "    else:\n"
-            "        s = seed; chosen = []\n"
-            "        used = set()\n"
-            "        while len(chosen) < k and len(used) < N:\n"
-            "            s = s * 1103515245 + 12345\n"
-            "            idx = abs(s >> 16) % N\n"
-            "            if idx not in used:\n"
-            "                used.add(idx); chosen.append(idx)\n"
-            "        centroids = [pts[i] for i in chosen]\n"
-            "    assignment = [0] * N\n"
-            "    for _it in range(max_iter):\n"
-            "        changed = False\n"
-            "        for i in range(N):\n"
-            "            px, py = pts[i]\n"
-            "            best_c = 0; best_d = float('inf')\n"
-            "            for c in range(len(centroids)):\n"
-            "                cx, cy = centroids[c]\n"
-            "                d = (px - cx) ** 2 + (py - cy) ** 2\n"
-            "                if d < best_d:\n"
-            "                    best_d = d; best_c = c\n"
-            "            if assignment[i] != best_c:\n"
-            "                assignment[i] = best_c; changed = True\n"
-            "        sums = [(0.0, 0.0, 0) for _ in range(len(centroids))]\n"
-            "        for i in range(N):\n"
-            "            c = assignment[i]; px, py = pts[i]\n"
-            "            sx, sy, cnt = sums[c]\n"
-            "            sums[c] = (sx + px, sy + py, cnt + 1)\n"
-            "        for c in range(len(centroids)):\n"
-            "            sx, sy, cnt = sums[c]\n"
-            "            if cnt > 0:\n"
-            "                centroids[c] = (sx / cnt, sy / cnt)\n"
-            "        if not changed:\n"
-            "            break\n"
-            "    return assignment\n"
-            "def main():\n"
-            "    data = sys.stdin.read().split()\n"
-            "    idx = 0\n"
-            "    N = int(data[idx]); idx += 1\n"
-            "    k = int(data[idx]); idx += 1\n"
-            "    seed = int(data[idx]); idx += 1\n"
-            "    max_iter = int(data[idx]); idx += 1\n"
-            "    pts = []\n"
-            "    for _ in range(N):\n"
-            "        x = float(data[idx]); idx += 1\n"
-            "        y = float(data[idx]); idx += 1\n"
-            "        pts.append((x, y))\n"
-            "    res = kmeans_lcg(pts, k, seed, max_iter)\n"
-            "    print(','.join(map(str, res)))\n"
-            "if __name__ == '__main__':\n"
-            "    main()\n"
+            'import math\n'
+            'import sys\n'
+            '\n'
+            'def kmeans(pts, k, seed, max_iter=20):\n'
+            '    n = len(pts)\n'
+            '    centroids = [(0.0, 0.0)] * k\n'
+            '    if seed == 0:\n'
+            '        for i in range(k):\n'
+            '            centroids[i] = (float(pts[i % n][0]), float(pts[i % n][1]))\n'
+            '    else:\n'
+            '        s = seed\n'
+            '        for i in range(k):\n'
+            '            src = pts[(i + s) % n]\n'
+            '            centroids[i] = (float(src[0]), float(src[1]))\n'
+            '            s = (s * 7 + 13) % max(n, 1)\n'
+            '    assign = [0] * n\n'
+            '    for _it in range(max_iter):\n'
+            '        for i in range(n):\n'
+            '            best = 1e18\n'
+            '            bc = -1\n'
+            '            for c in range(k):\n'
+            '                dx = pts[i][0] - centroids[c][0]\n'
+            '                dy = pts[i][1] - centroids[c][1]\n'
+            '                d2 = dx*dx + dy*dy\n'
+            '                if d2 < best:\n'
+            '                    best = d2\n'
+            '                    bc = c\n'
+            '            assign[i] = bc\n'
+            '        sum_x = [0.0] * k\n'
+            '        sum_y = [0.0] * k\n'
+            '        cnt = [0] * k\n'
+            '        for i in range(n):\n'
+            '            sum_x[assign[i]] += pts[i][0]\n'
+            '            sum_y[assign[i]] += pts[i][1]\n'
+            '            cnt[assign[i]] += 1\n'
+            '        changed = 0\n'
+            '        for c in range(k):\n'
+            '            if cnt[c] > 0:\n'
+            '                nx = sum_x[c] / cnt[c]\n'
+            '                ny = sum_y[c] / cnt[c]\n'
+            '            else:\n'
+            '                nx, ny = centroids[c]\n'
+            '            if abs(nx - centroids[c][0]) > 1e-12 or abs(ny - centroids[c][1]) > 1e-12:\n'
+            '                changed += 1\n'
+            '            centroids[c] = (nx, ny)\n'
+            '        if changed == 0:\n'
+            '            break\n'
+            '    return assign\n'
+            '\n'
+            'def main():\n'
+            '    data = sys.stdin.read().split()\n'
+            '    idx = 0\n'
+            '    N = int(data[idx]); idx += 1\n'
+            '    k = int(data[idx]); idx += 1\n'
+            '    seed = int(data[idx]); idx += 1\n'
+            '    max_iter = int(data[idx]); idx += 1\n'
+            '    pts = []\n'
+            '    for _ in range(N):\n'
+            '        x = float(data[idx]); idx += 1\n'
+            '        y = float(data[idx]); idx += 1\n'
+            '        pts.append((x, y))\n'
+            '    res = kmeans(pts, k, seed, max_iter)\n'
+            '    print(",".join(map(str, res)))\n'
+            '\n'
+            'if __name__ == "__main__":\n'
+            '    main()\n'
         ),
         "linear-regression": (
-            "import sys\n"
-            "def linear_reg(data, alpha, iters):\n"
-            "    t0 = 0.0; t1 = 0.0\n"
-            "    N = len(data)\n"
-            "    final_mse = 0.0\n"
-            "    for ep in range(iters):\n"
-            "        sum_err = 0.0; sum_errx = 0.0; mse = 0.0\n"
-            "        for (x, y) in data:\n"
-            "            pred = t0 + t1 * x\n"
-            "            err = pred - y\n"
-            "            sum_err += err\n"
-            "            sum_errx += err * x\n"
-            "            mse += err * err\n"
-            "        mse /= N\n"
-            "        if ep == iters - 1:\n"
-            "            final_mse = mse\n"
-            "        g0 = sum_err / N\n"
-            "        g1 = sum_errx / N\n"
-            "        t0 -= alpha * g0\n"
-            "        t1 -= alpha * g1\n"
-            "    return (t0, t1, final_mse)\n"
-            "def main():\n"
-            "    data_in = sys.stdin.read().split()\n"
-            "    idx = 0\n"
-            "    N = int(data_in[idx]); idx += 1\n"
-            "    alpha = float(data_in[idx]); idx += 1\n"
-            "    iters = int(data_in[idx]); idx += 1\n"
-            "    data = []\n"
-            "    for _ in range(N):\n"
-            "        x = float(data_in[idx]); idx += 1\n"
-            "        y = float(data_in[idx]); idx += 1\n"
-            "        data.append((x, y))\n"
-            "    t0, t1, mse = linear_reg(data, alpha, iters)\n"
-            "    print(f\"{t0:.6f} {t1:.6f} {mse:.6f}\")\n"
-            "if __name__ == '__main__':\n"
-            "    main()\n"
+            'import sys\n'
+            '\n'
+            'def linear_reg(data, alpha, iters):\n'
+            '    n = len(data)\n'
+            '    t0, t1 = 0.0, 0.0\n'
+            '    for _ in range(iters):\n'
+            '        g0, g1 = 0.0, 0.0\n'
+            '        for i in range(n):\n'
+            '            x, y = data[i]\n'
+            '            pred = t0 + t1 * x\n'
+            '            err = pred - y\n'
+            '            g0 += 2.0 * err / n\n'
+            '            g1 += 2.0 * err * x / n\n'
+            '        t0 -= alpha * g0\n'
+            '        t1 -= alpha * g1\n'
+            '    final_mse = 0.0\n'
+            '    for i in range(n):\n'
+            '        x, y = data[i]\n'
+            '        pred = t0 + t1 * x\n'
+            '        err = pred - y\n'
+            '        final_mse += err * err\n'
+            '    final_mse /= n\n'
+            '    return (t0, t1, final_mse)\n'
+            '\n'
+            'def main():\n'
+            '    data_in = sys.stdin.read().split()\n'
+            '    idx = 0\n'
+            '    N = int(data_in[idx]); idx += 1\n'
+            '    alpha = float(data_in[idx]); idx += 1\n'
+            '    iters = int(data_in[idx]); idx += 1\n'
+            '    data = []\n'
+            '    for _ in range(N):\n'
+            '        x = float(data_in[idx]); idx += 1\n'
+            '        y = float(data_in[idx]); idx += 1\n'
+            '        data.append((x, y))\n'
+            '    t0, t1, mse = linear_reg(data, alpha, iters)\n'
+            '    print(f"{t0:.6f} {t1:.6f} {mse:.6f}")\n'
+            '\n'
+            'if __name__ == "__main__":\n'
+            '    main()\n'
         ),
         "perceptron": (
-            "import sys\n"
-            "def perceptron(pts, labels, alpha, max_epoch):\n"
-            "    n = len(pts)\n"
-            "    unique = sorted(set(map(str, labels)))\n"
-            "    first = unique[0]\n"
-            "    binlabels = [-1 if str(l) == first else +1 for l in labels]\n"
-            "    w0, w1, w2 = 0.0, 0.0, 0.0\n"
-            "    converged = -1\n"
-            "    if n == 0:\n"
-            "        return (0.0, 0.0, 0.0, -1)\n"
-            "    for epoch in range(max_epoch):\n"
-            "        misses = 0\n"
-            "        for i in range(n):\n"
-            "            x1, x2 = pts[i]\n"
-            "            act = w0 + w1 * x1 + w2 * x2\n"
-            "            pred = +1 if act >= 0 else -1\n"
-            "            truey = binlabels[i]\n"
-            "            if pred != truey:\n"
-            "                misses += 1\n"
-            "                delta = truey - pred\n"
-            "                w0 += alpha * delta * 1.0\n"
-            "                w1 += alpha * delta * x1\n"
-            "                w2 += alpha * delta * x2\n"
-            "        if misses == 0:\n"
-            "            converged = epoch + 1\n"
-            "            break\n"
-            "    return (w0, w1, w2, converged)\n"
-            "def main():\n"
-            "    data = sys.stdin.read().split()\n"
-            "    idx = 0\n"
-            "    N = int(data[idx]); idx += 1\n"
-            "    alpha = float(data[idx]); idx += 1\n"
-            "    max_epoch = int(data[idx]); idx += 1\n"
-            "    pts = []; labels = []\n"
-            "    for _ in range(N):\n"
-            "        x1 = float(data[idx]); idx += 1\n"
-            "        x2 = float(data[idx]); idx += 1\n"
-            "        lab = int(data[idx]); idx += 1\n"
-            "        pts.append((x1, x2)); labels.append(lab)\n"
-            "    w0, w1, w2, ep = perceptron(pts, labels, alpha, max_epoch)\n"
-            "    print(f\"{w0:.6f} {w1:.6f} {w2:.6f} {ep}\")\n"
-            "if __name__ == '__main__':\n"
-            "    main()\n"
+            'import sys\n'
+            '\n'
+            'def perceptron(pts, labels, alpha, max_epoch):\n'
+            '    n = len(pts)\n'
+            '    y = [0] * n\n'
+            '    if n > 0:\n'
+            '        seen = sorted(set(labels))\n'
+            '        first = seen[0]\n'
+            '        for i in range(n):\n'
+            '            y[i] = -1 if labels[i] == first else +1\n'
+            '    w0, w1, w2 = 0.0, 0.0, 0.0\n'
+            '    converged_epoch = -1\n'
+            '    for epoch in range(max_epoch):\n'
+            '        misses = 0\n'
+            '        for i in range(n):\n'
+            '            x1, x2 = pts[i]\n'
+            '            a = w0 + w1 * x1 + w2 * x2\n'
+            '            pred = +1 if a >= 0 else -1\n'
+            '            if pred != y[i]:\n'
+            '                misses += 1\n'
+            '                w0 += alpha * (y[i] - pred) * 1.0\n'
+            '                w1 += alpha * (y[i] - pred) * x1\n'
+            '                w2 += alpha * (y[i] - pred) * x2\n'
+            '        if misses == 0:\n'
+            '            converged_epoch = epoch + 1\n'
+            '            break\n'
+            '    return (w0, w1, w2, converged_epoch)\n'
+            '\n'
+            'def main():\n'
+            '    data = sys.stdin.read().split()\n'
+            '    idx = 0\n'
+            '    N = int(data[idx]); idx += 1\n'
+            '    alpha = float(data[idx]); idx += 1\n'
+            '    max_epoch = int(data[idx]); idx += 1\n'
+            '    pts = []\n'
+            '    labels = []\n'
+            '    for _ in range(N):\n'
+            '        x1 = float(data[idx]); idx += 1\n'
+            '        x2 = float(data[idx]); idx += 1\n'
+            '        lab = int(data[idx]); idx += 1\n'
+            '        pts.append((x1, x2))\n'
+            '        labels.append(lab)\n'
+            '    w0, w1, w2, ep = perceptron(pts, labels, alpha, max_epoch)\n'
+            '    print(f"{w0:.6f} {w1:.6f} {w2:.6f} {ep}")\n'
+            '\n'
+            'if __name__ == "__main__":\n'
+            '    main()\n'
         ),
     }
 
@@ -450,3 +468,28 @@ class TestToolchainMissing:
     def test_toolchain_missing_message(self):
         exc = ToolchainMissing("C++", "a C++ compiler (g++ or clang++)")
         assert "C++" in str(exc)
+
+
+class TestOutputComparison:
+    """Judge compares numbers with a small tolerance, text exactly."""
+
+    def test_negative_zero_matches_zero(self):
+        from app.runner import _outputs_match
+        assert _outputs_match("-0.000000 1.500000", "0.000000 1.500000")
+
+    def test_last_digit_rounding_tolerated(self):
+        from app.runner import _outputs_match
+        assert _outputs_match("2.660467", "2.660466")
+
+    def test_real_numeric_difference_rejected(self):
+        from app.runner import _outputs_match
+        assert not _outputs_match("2.661000", "2.660466")
+
+    def test_inf_must_match_literally(self):
+        from app.runner import _outputs_match
+        assert _outputs_match("0 INF", "0 INF")
+        assert not _outputs_match("0 inf", "0 INF")
+
+    def test_token_count_must_match(self):
+        from app.runner import _outputs_match
+        assert not _outputs_match("1 2", "1 2 3")

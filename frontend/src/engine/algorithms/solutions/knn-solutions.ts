@@ -70,7 +70,7 @@ public class Main {
             if (cmp != 0) return cmp;
             return Double.compare(a[2], b[2]);
         });
-        HashMap<Integer, Integer> cnt = new HashMap<>();
+        TreeMap<Integer, Integer> cnt = new TreeMap<>();  // ascending: vote ties -> smaller label
         for (int i = 0; i < Math.min(k, dists.length); i++) {
             int label = (int) dists[i][2];
             cnt.put(label, cnt.getOrDefault(label, 0) + 1);
@@ -124,7 +124,7 @@ def knn_classify(pts, k, qx, qy):
         label = dists[i][2]
         cnt[label] = cnt.get(label, 0) + 1
     best_label, best_cnt = -1, -1
-    for label, count in cnt.items():
+    for label, count in sorted(cnt.items()):  # ascending: vote ties -> smaller label
         if count > best_cnt:
             best_cnt = count
             best_label = label

@@ -244,50 +244,65 @@ def _knn_stress_input() -> str:
 
 KNN_TESTS = [
     TestCase(
-        "5 3 1\n1 1 0\n2 2 0\n3 3 1\n4 5 1\n3 3\n3 2",
-        "1",
+        '4 3 2\n1 1 0\n2 2 0\n3 3 1\n4 5 1\n3 3\n3 2',
+        '1 0',
         False,
-        "sample 1: 2-class k=3",
+        'sample 1: 2-class k=3, two queries',
     ),
     TestCase(
-        "4 1 2\n0 0 0\n0 0 0\n10 10 1\n5 5 1\n1 1\n9 9",
-        "0 1",
+        '4 1 2\n0 0 0\n0 0 0\n10 10 1\n5 5 1\n1 1\n9 9',
+        '0 1',
         False,
-        "sample 2: k=1 two queries",
-    ),
-    TestCase("1 1 1\n5 5 7\n5 5", "7", True, "k=1 single point"),
-    TestCase("0 0 1\n0 0", "-1", True, "empty train set"),
-    TestCase(
-        "6 3 1\n0 0 0\n0 1 0\n1 0 0\n0 10 1\n1 10 1\n10 10 2\n2 2",
-        "0",
-        True,
-        "3-class unambiguous",
+        'sample 2: k=1 two queries',
     ),
     TestCase(
-        "6 3 1\n0 0 0\n1 1 1\n2 2 2\n10 0 0\n10 1 1\n10 2 2\n5 1",
-        "0",
+        '1 1 1\n5 5 7\n5 5',
+        '7',
         True,
-        "vote tie-break by smaller label",
+        'k=1 single point',
     ),
     TestCase(
-        "5 5 1\n1 1 0\n2 2 0\n-1 -1 1\n-2 -2 1\n0 0 0\n0 0",
-        "0",
+        '0 0 1\n0 0',
+        '-1',
         True,
-        "negative coords, k=N",
+        'empty train set',
     ),
     TestCase(
-        "10 1 1\n0 0 0\n0 0 1\n0 0 0\n0 0 2\n0 0 0\n0 0 1\n0 0 0\n0 0 2\n0 0 0\n0 0 3\n0 0",
-        "0",
+        '6 3 1\n0 0 0\n0 1 0\n1 0 0\n0 10 1\n1 10 1\n10 10 2\n2 2',
+        '0',
         True,
-        "duplicate points tie-break by index",
+        '3-class unambiguous',
     ),
     TestCase(
-        "12 5 1\n0 1 0\n1 0 0\n1 1 0\n0 0 0\n5 1 1\n5 0 1\n6 1 1\n6 0 1\n3 5 2\n3 4 2\n4 5 2\n4 4 2\n3 2",
-        "0",
+        '3 2 1\n0 0 1\n3 0 0\n9 9 0\n1 0',
+        '0',
         True,
-        "3-class overlap from preset",
+        'vote tie-break by smaller label',
     ),
-    TestCase(_knn_stress_input(), "0", True, "n=200 stress"),
+    TestCase(
+        '5 5 1\n1 1 0\n2 2 0\n-1 -1 1\n-2 -2 1\n0 0 0\n0 0',
+        '0',
+        True,
+        'negative coords, k=N',
+    ),
+    TestCase(
+        '10 1 1\n0 0 0\n0 0 1\n0 0 0\n0 0 2\n0 0 0\n0 0 1\n0 0 0\n0 0 2\n0 0 0\n0 0 3\n0 0',
+        '0',
+        True,
+        'duplicate points tie-break by index',
+    ),
+    TestCase(
+        '12 5 1\n0 1 0\n1 0 0\n1 1 0\n0 0 0\n5 1 1\n5 0 1\n6 1 1\n6 0 1\n3 5 2\n3 4 2\n4 5 2\n4 4 2\n3 2',
+        '0',
+        True,
+        '3-class overlap from preset',
+    ),
+    TestCase(
+        _knn_stress_input(),
+        '0',
+        True,
+        'n=200 stress',
+    ),
 ]
 
 
@@ -306,49 +321,64 @@ _KMEANS_STRESS_EXPECTED = ",".join(["0"] * 100 + ["1"] * 100)
 
 KMEANS_TESTS = [
     TestCase(
-        "4 2 0 20\n-3 0\n-2.5 0.5\n3 0\n2.5 0.5",
-        "0,0,1,1",
+        '4 2 0 20\n-3 0\n-2.5 0.5\n3 0\n2.5 0.5',
+        '0,0,1,1',
         False,
-        "sample 1: 2-blob k=2 seed=0",
+        'sample 1: 2-blob k=2 seed=0',
     ),
     TestCase(
-        "9 3 0 20\n-3 2\n-2.5 2.5\n-3.5 2.5\n3 2\n2.5 2.5\n3.5 2.5\n0 -3\n0.5 -3.5\n-0.5 -3.5",
-        "0,0,0,1,1,1,2,2,2",
+        '9 3 0 20\n-3 2\n-2.5 2.5\n-3.5 2.5\n3 2\n2.5 2.5\n3.5 2.5\n0 -3\n0.5 -3.5\n-0.5 -3.5',
+        '2,2,2,1,1,1,0,0,0',
         False,
-        "sample 2: 3-blob k=3",
-    ),
-    TestCase("1 1 0 20\n5 5", "0", True, "k=1 single point"),
-    TestCase("3 3 0 20\n0 0\n1 1\n2 2", "0,1,2", True, "k=N each own cluster"),
-    TestCase(
-        "8 2 7 1\n0 0\n0.1 0.1\n0.2 0.2\n0.1 0\n10 10\n10.1 10.1\n10.2 10.2\n10.1 10",
-        "0,0,0,0,1,1,1,1",
-        True,
-        "1 iter only still outputs last assign",
+        'sample 2: 3-blob k=3',
     ),
     TestCase(
-        "10 2 0 20\n0 0\n0 0\n0 0\n0 0\n0 0\n10 10\n10 10\n10 10\n10 10\n10 10",
-        "0,0,0,0,0,1,1,1,1,1",
+        '1 1 0 20\n5 5',
+        '0',
         True,
-        "duplicate points",
+        'k=1 single point',
     ),
     TestCase(
-        "8 2 0 20\n-5 -5\n-4 -5\n-5 -4\n-4 -4\n5 5\n4 5\n5 4\n4 4",
-        "0,0,0,0,1,1,1,1",
+        '3 3 0 20\n0 0\n1 1\n2 2',
+        '0,1,2',
         True,
-        "negative coords",
-    ),
-    TestCase(_kmeans_stress_input(), _KMEANS_STRESS_EXPECTED, True, "n=200 stress"),
-    TestCase(
-        "20 4 7 20\n-3 -2\n-3.5 -2\n-3 -2.5\n-2.5 -2\n-3.2 -2.3\n3 -2\n3.5 -2\n3 -2.5\n2.5 -2\n3.2 -2.3\n-3 2\n-3.5 2\n-3 2.5\n-2.5 2\n-3.2 2.3\n3 2\n3.5 2\n3 2.5\n2.5 2\n3.2 2.3",
-        "0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,3,3,3,3,3",
-        True,
-        "k=4 quadrants seeded",
+        'k=N each own cluster',
     ),
     TestCase(
-        "6 2 0 20\n0 0\n1 0\n2 0\n100 0\n101 0\n102 0",
-        "0,0,0,1,1,1",
+        '8 2 7 1\n0 0\n0.1 0.1\n0.2 0.2\n0.1 0\n10 10\n10.1 10.1\n10.2 10.2\n10.1 10',
+        '0,0,0,0,0,0,0,0',
         True,
-        "seed=0 first-k-points init",
+        'seed=7 max_iter=1 (offset init repeats a point)',
+    ),
+    TestCase(
+        '10 2 0 20\n0 0\n0 0\n0 0\n0 0\n0 0\n10 10\n10 10\n10 10\n10 10\n10 10',
+        '1,1,1,1,1,0,0,0,0,0',
+        True,
+        'duplicate points',
+    ),
+    TestCase(
+        '8 2 0 20\n-5 -5\n-4 -5\n-5 -4\n-4 -4\n5 5\n4 5\n5 4\n4 4',
+        '0,0,0,0,1,1,1,1',
+        True,
+        'negative coords',
+    ),
+    TestCase(
+        _kmeans_stress_input(),
+        _KMEANS_STRESS_EXPECTED,
+        True,
+        'n=200 stress',
+    ),
+    TestCase(
+        '20 4 7 20\n-3 -2\n-3.5 -2\n-3 -2.5\n-2.5 -2\n-3.2 -2.3\n3 -2\n3.5 -2\n3 -2.5\n2.5 -2\n3.2 -2.3\n-3 2\n-3.5 2\n-3 2.5\n-2.5 2\n-3.2 2.3\n3 2\n3.5 2\n3 2.5\n2.5 2\n3.2 2.3',
+        '1,1,1,1,1,2,2,0,0,2,1,1,1,1,1,3,3,3,3,3',
+        True,
+        'k=4 seed=7 offset init',
+    ),
+    TestCase(
+        '6 2 0 20\n0 0\n1 0\n2 0\n100 0\n101 0\n102 0',
+        '0,0,0,1,1,1',
+        True,
+        'seed=0 first-k-points init',
     ),
 ]
 
@@ -364,54 +394,64 @@ def _linreg_stress_input() -> str:
 
 LINEAR_REGRESSION_TESTS = [
     TestCase(
-        "5 0.1 20\n1 2\n2 4\n3 6\n4 8\n5 10",
-        "0.195720 1.946802 0.002483",
+        '5 0.01 20\n1 2\n2 4\n3 6\n4 8\n5 10',
+        '0.478477 1.858436 0.042974',
         False,
-        "sample 1: exact line converges",
+        'sample 1: exact line y=2x, α=0.01',
     ),
     TestCase(
-        "4 0.05 5\n0 3\n1 5\n2 7\n3 9",
-        "1.590113 2.341914 0.066750",
+        '4 0.05 5\n0 3\n1 5\n2 7\n3 9',
+        '1.459396 2.498576 0.939159',
         False,
-        "sample 2: y=2x+3 short run",
-    ),
-    TestCase("1 0.01 1\n5 7", "0.140000 0.700000 35.409600", True, "single point 1 iter"),
-    TestCase("2 0.5 1\n0 0\n1 1", "0.500000 0.500000 0.125000", True, "2-points α=0.5 single iter"),
-    TestCase(
-        "10 0.03 20\n1 2.1\n2 3.9\n3 6.0\n4 8.1\n5 10.0\n6 12.2\n7 14.0\n8 15.9\n9 18.1\n10 20.0",
-        "-0.131622 2.016440 0.011511",
-        True,
-        "noisy N=10 full 20 iter",
+        'sample 2: y=2x+3 short run',
     ),
     TestCase(
-        "6 0.001 5\n-3 0\n-2 1\n-1 2\n1 4\n2 5\n3 6",
-        "0.083038 1.041000 0.400115",
+        '1 0.01 1\n5 7',
+        '0.140000 0.700000 11.289600',
         True,
-        "negative x coords tiny alpha",
+        'single point 1 iter',
     ),
     TestCase(
-        "4 1e-7 50\n0 1\n1 2\n2 3\n3 4",
-        "0.000100 0.000200 6.046258",
+        '2 0.5 1\n0 0\n1 1',
+        '0.500000 0.500000 0.125000',
         True,
-        "micro-alpha slow convergence",
+        '2-points α=0.5 single iter',
     ),
     TestCase(
-        "8 0.5 20\n0 0\n1 2\n2 4\n3 6\n4 8\n5 10\n6 12\n7 14",
-        "0.000000 2.000000 0.000000",
+        '10 0.005 20\n1 2.1\n2 3.9\n3 6.0\n4 8.1\n5 10.0\n6 12.2\n7 14.0\n8 15.9\n9 18.1\n10 20.0',
+        '0.271809 1.965046 0.020287',
         True,
-        "exact line MSE drops to ~0",
+        'noisy N=10 full 20 iter',
+    ),
+    TestCase(
+        '6 0.001 5\n-3 0\n-2 1\n-1 2\n1 4\n2 5\n3 6',
+        '0.029880 0.045804 13.070568',
+        True,
+        'negative x coords tiny alpha',
+    ),
+    TestCase(
+        '4 1e-7 50\n0 1\n1 2\n2 3\n3 4',
+        '0.000025 0.000050 7.499375',
+        True,
+        'micro-alpha slow convergence',
+    ),
+    TestCase(
+        '8 0.02 20\n0 0\n1 2\n2 4\n3 6\n4 8\n5 10\n6 12\n7 14',
+        '0.309697 1.937023 0.028793',
+        True,
+        'exact line y=2x, α=0.02',
     ),
     TestCase(
         _linreg_stress_input(),
-        "1.889801 2.003452 0.076929",
+        '2.660466 1.998802 0.136724',
         True,
-        "n=200 stress",
+        'n=200 stress',
     ),
     TestCase(
-        "6 0.05 1\n0 3\n1 5\n2 7\n3 9\n4 11\n5 13",
-        "0.650000 2.175000 1.059688",
+        '6 0.05 1\n0 3\n1 5\n2 7\n3 9\n4 11\n5 13',
+        '0.800000 2.583333 1.542546',
         True,
-        "one-epoch deterministic check",
+        'one-epoch deterministic check',
     ),
 ]
 
@@ -427,59 +467,64 @@ def _perceptron_stress_input() -> str:
 
 PERCEPTRON_TESTS = [
     TestCase(
-        "4 1 50\n-2 -2 0\n-1 -1 0\n2 2 1\n1 1 1",
-        "2.000000 0.000000 2.000000 2",
+        '4 1 50\n-2 -2 0\n-1 -1 0\n2 2 1\n1 1 1',
+        '-2.000000 4.000000 4.000000 2',
         False,
-        "sample 1: separable 4-pt",
+        'sample 1: separable 4-pt',
     ),
     TestCase(
-        "2 1 10\n0 0 0\n1 1 1",
-        "0.000000 2.000000 2.000000 1",
+        '2 1 10\n0 0 0\n1 1 1',
+        '-2.000000 2.000000 2.000000 3',
         False,
-        "sample 2: 2-pt 1-epoch converge",
-    ),
-    TestCase("1 1 10\n5 5 7", "0.000000 0.000000 0.000000 1", True, "single point converges in 1"),
-    TestCase(
-        "4 1 10\n0 0 0\n1 1 0\n0 1 1\n1 0 1",
-        "-2.000000 2.000000 -2.000000 -1",
-        True,
-        "XOR 4-pt inseparable",
+        'sample 2: 2-pt, converges in epoch 3',
     ),
     TestCase(
-        "6 0.5 20\n-3 1 0\n-2 0 0\n-1 -1 0\n1 1 1\n2 0 1\n3 -1 1",
-        "0.000000 1.000000 0.000000 2",
+        '1 1 10\n5 5 7',
+        '-2.000000 -10.000000 -10.000000 2',
         True,
-        "6-pt separable α=0.5",
+        'single label class (all map to -1)',
     ),
     TestCase(
-        "10 0.1 10\n-3 -2 0\n-3 -1 0\n-2 -2 0\n-1 -3 0\n-2 -1 0\n3 2 1\n3 1 1\n2 2 1\n1 3 1\n2 1 1",
-        "0.000000 0.400000 0.200000 2",
+        '4 1 10\n0 0 0\n1 1 0\n0 1 1\n1 0 1',
+        '0.000000 0.000000 2.000000 -1',
         True,
-        "10-pt separable α=0.1",
+        'XOR 4-pt inseparable',
     ),
     TestCase(
-        "4 1 1\n0 0 0\n1 0 1\n0 1 1\n1 1 0",
-        "0.000000 0.000000 0.000000 -1",
+        '6 0.5 20\n-3 1 0\n-2 0 0\n-1 -1 0\n1 1 1\n2 0 1\n3 -1 1',
+        '-1.000000 3.000000 -1.000000 2',
         True,
-        "inseparable + cap=1 epoch returns -1",
+        '6-pt separable α=0.5',
     ),
     TestCase(
-        "8 0.5 50\n-2 -1 0\n-1 -2 0\n-3 0 0\n0 -3 0\n2 1 1\n1 2 1\n3 0 1\n0 3 1",
-        "0.000000 1.000000 1.000000 1",
+        '10 0.1 10\n-3 -2 0\n-3 -1 0\n-2 -2 0\n-1 -3 0\n-2 -1 0\n3 2 1\n3 1 1\n2 2 1\n1 3 1\n2 1 1',
+        '-0.200000 0.600000 0.400000 2',
         True,
-        "8-pt opposite-quad separable",
+        '10-pt separable α=0.1',
+    ),
+    TestCase(
+        '4 1 1\n0 0 0\n1 0 1\n0 1 1\n1 1 0',
+        '-2.000000 0.000000 -2.000000 -1',
+        True,
+        'inseparable + cap=1 epoch returns -1',
+    ),
+    TestCase(
+        '8 0.5 50\n-2 -1 0\n-1 -2 0\n-3 0 0\n0 -3 0\n2 1 1\n1 2 1\n3 0 1\n0 3 1',
+        '-1.000000 2.000000 1.000000 2',
+        True,
+        '8-pt opposite-quad separable',
     ),
     TestCase(
         _perceptron_stress_input(),
-        "0.000000 6.000000 4.000000 1",
+        '-2.000000 6.000000 4.000000 2',
         True,
-        "n=200 stress separable",
+        'n=200 stress separable',
     ),
     TestCase(
-        "3 1 50\n-1 0 0\n0 0 1\n1 0 0",
-        "-2.000000 -2.000000 0.000000 -1",
+        '3 1 50\n-1 0 0\n0 0 1\n1 0 0',
+        '-2.000000 -2.000000 0.000000 -1',
         True,
-        "boundary point activation=0 check",
+        'boundary point activation=0 check',
     ),
 ]
 
@@ -613,12 +658,13 @@ ALGORITHMS: dict[str, Algorithm] = {
             "Implement k-Nearest Neighbors classification. Input format:\n"
             "Line 1: N k Q — number of training points, neighbor count k, number of "
             "queries.\n"
-            "Next N lines: x y label — one 2D training point with integer label.\n"
-            "Next Q lines: x y — one 2D query point.\n"
-            "For each query, find the k nearest training points by Euclidean "
-            "distance (break distance ties by the smaller point-id string order; "
-            "break vote ties by the smaller label). Print Q space-separated "
-            "predicted labels on one line. If N==0 print -1 for each query."
+            "Next N lines: x y label — one 2D training point (integers).\n"
+            "Next Q lines: x y — one 2D query point (integers).\n"
+            "For each query, take the k nearest training points by Euclidean "
+            "distance (distance ties: the earlier, smaller-index point first) and "
+            "predict the majority label (vote ties: the smaller label). Print Q "
+            "space-separated predicted labels on one line. If N==0 print -1 for "
+            "each query."
         ),
         tests=KNN_TESTS,
     ),
@@ -628,13 +674,17 @@ ALGORITHMS: dict[str, Algorithm] = {
         statement=(
             "Implement Lloyd's k-Means clustering. Input format:\n"
             "Line 1: N k seed max_iter — number of 2D points, cluster count, "
-            "random seed, max iterations.\n"
+            "seed, max iterations (capped at 20).\n"
             "Next N lines: x y — one 2D point (float).\n"
-            "Centroid init rule: if seed==0 use the first k input points as "
-            "initial centroids; otherwise use seed to seed a LCG PRNG "
-            "(s=s*1103515245+12345; idx = abs(s>>16) % N) drawing k unique points.\n"
-            "Run assign→move for up to max_iter iterations. Print the cluster "
-            "assignment (0..k-1) of each input point as a comma-separated line."
+            "Centroid init: if seed==0, centroid i = point i % N. Otherwise "
+            "s = seed and for i = 0..k-1: centroid i = point (i + s) % N, then "
+            "s = (s*7 + 13) % N.\n"
+            "Each iteration: assign every point to the nearest centroid by squared "
+            "Euclidean distance (ties: the smaller cluster index), then move each "
+            "centroid to the mean of its points (an empty cluster keeps its "
+            "centroid). Stop when no centroid moves by more than 1e-12, or after "
+            "max_iter iterations. Print the final cluster id (0..k-1) of each "
+            "point, comma-separated, in input order."
         ),
         tests=KMEANS_TESTS,
     ),
@@ -646,13 +696,13 @@ ALGORITHMS: dict[str, Algorithm] = {
             "Descent. Input format:\n"
             "Line 1: N alpha iters — number of 2D points, learning rate, epochs.\n"
             "Next N lines: x y — one (x,y) pair (float).\n"
-            "Model: h(x) = θ0 + θ1·x; loss = MSE over the batch of N points; "
-            "update rule applied once per epoch (after summing all N gradients):\n"
-            "  g0 = (1/N) Σ (θ0 + θ1·xi − yi)\n"
-            "  g1 = (1/N) Σ (θ0 + θ1·xi − yi)·xi\n"
+            "Model: h(x) = θ0 + θ1·x. Initialize θ0=0, θ1=0. Each epoch, with "
+            "errors computed from the current θ:\n"
+            "  g0 = (2/N) Σ (θ0 + θ1·xi − yi)\n"
+            "  g1 = (2/N) Σ (θ0 + θ1·xi − yi)·xi\n"
             "  θ0 := θ0 − α·g0 ;  θ1 := θ1 − α·g1\n"
-            "Initialize θ0=0, θ1=0. Run exactly iters epochs. Print exactly 3 "
-            "space-separated values formatted to 6 decimals: θ0 θ1 MSE(final)."
+            "Run exactly iters epochs, then compute MSE = (1/N) Σ (θ0 + θ1·xi − yi)² "
+            "with the final θ. Print θ0 θ1 MSE, space-separated, 6 decimals each."
         ),
         tests=LINEAR_REGRESSION_TESTS,
     ),
@@ -665,17 +715,14 @@ ALGORITHMS: dict[str, Algorithm] = {
             "Line 1: N alpha max_epoch — number of 2D points, learning rate, max "
             "training epochs.\n"
             "Next N lines: x1 x2 label — one 2D point with integer label.\n"
-            "Label binarization: let L be the sorted list of unique labels; map "
-            "L[0] → −1 and any other label → +1. Weight vector w = [w0, w1, w2] "
-            "(bias + two input weights); activation = w0 + w1·x1 + w2·x2; "
-            "prediction = +1 if activation ≥ 0 else −1.\n"
-            "One epoch = a full pass over N points in input order; update rule "
-            "on misclassification (pred≠bin_label):\n"
-            "  w0 += α · bin_label ; w1 += α · bin_label · x1 ; w2 += α · bin_label · x2\n"
-            "Stop when an epoch produces 0 misclassifications (converged). "
-            "Initialize w = [0,0,0]. Print exactly 4 space-separated values: "
-            "w0 w1 w2 (6 decimals) and epoch-converged (1-based) or −1 if not "
-            "converged within max_epoch."
+            "Label binarization: the first label in sorted unique order maps to "
+            "y = −1, any other label to y = +1. Initialize w = [w0, w1, w2] = "
+            "[0, 0, 0]. Prediction ŷ = +1 if w0 + w1·x1 + w2·x2 ≥ 0 else −1.\n"
+            "One epoch = one pass over the points in input order; on each "
+            "misclassification (ŷ ≠ y): w += α·(y − ŷ)·(1, x1, x2).\n"
+            "Stop after the first epoch with zero misclassifications. Print "
+            "w0 w1 w2 (6 decimals) and the 1-based converged epoch, or −1 if no "
+            "epoch within max_epoch had zero misclassifications."
         ),
         tests=PERCEPTRON_TESTS,
     ),

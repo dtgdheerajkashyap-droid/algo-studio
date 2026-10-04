@@ -250,6 +250,44 @@ def _normalize(s: str) -> str:
     return "\n".join(line.rstrip() for line in s.strip().splitlines()).strip()
 
 
+FLOAT_ABS_TOL = 1e-5
+FLOAT_REL_TOL = 1e-6
+
+
+def _as_finite_float(tok: str) -> float | None:
+    try:
+        v = float(tok)
+    except ValueError:
+        return None
+    # float() also accepts "inf"/"nan"; those must match as exact text
+    # (e.g. Dijkstra requires the literal "INF").
+    return v if v == v and abs(v) != float("inf") else None
+
+
+def _tokens_match(actual: str, expected: str) -> bool:
+    if actual == expected:
+        return True
+    a, e = _as_finite_float(actual), _as_finite_float(expected)
+    if a is None or e is None:
+        return False
+    # Tolerance so "-0.000000" == "0.000000" and last-digit rounding
+    # differences between languages' printf/format don't fail a correct answer.
+    return abs(a - e) <= max(FLOAT_ABS_TOL, FLOAT_REL_TOL * abs(e))
+
+
+def _outputs_match(actual: str, expected: str) -> bool:
+    """Line-by-line, whitespace-separated token compare with float tolerance."""
+    a_lines = _normalize(actual).splitlines()
+    e_lines = _normalize(expected).splitlines()
+    if len(a_lines) != len(e_lines):
+        return False
+    for al, el in zip(a_lines, e_lines):
+        at, et = al.split(), el.split()
+        if len(at) != len(et) or not all(_tokens_match(x, y) for x, y in zip(at, et)):
+            return False
+    return True
+
+
 def _run_tests(cmd: list[str], tests: list[TestCase], cwd: Path) -> RunReport:
     results: list[TestOutcome] = []
     any_error = False
@@ -275,7 +313,7 @@ def _run_tests(cmd: list[str], tests: list[TestCase], cwd: Path) -> RunReport:
                 )
                 continue
             actual = proc.stdout
-            passed = _normalize(actual) == _normalize(t.expected)
+            passed = _outputs_match(actual, t.expected)
             results.append(
                 TestOutcome(
                     t.label, passed, t.hidden,

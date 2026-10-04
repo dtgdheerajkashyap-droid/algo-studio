@@ -274,7 +274,7 @@ export const kMeans: AlgorithmDefinition = {
   ],
   problem: {
     statement:
-      'Implement Lloyd-style k-Means clustering. Read from standard input: first line has four integers N k seed maxIter. Next N lines each contain two real numbers x y. Print a single line of comma-separated cluster ids (0..k−1) in input order. Use squared Euclidean distance for assignment. For seed=0 init centroids to the first k input points (wrap-around modulo). Otherwise use the seeded-offset init. Stop when no centroid moves more than ε=1e-12 or at maxIter iterations (capped at 20).',
+      'Implement Lloyd-style k-Means clustering. Read from standard input: first line has four integers N k seed maxIter. Next N lines each contain two real numbers x y. Print a single line of comma-separated cluster ids (0..k−1) in input order. Use squared Euclidean distance for assignment. For seed=0 init centroid i to point i mod N. Otherwise let s=seed and for i=0..k−1 set centroid i to point (i+s) mod N, then s=(s·7+13) mod N. Assignment ties go to the smaller cluster index; an empty cluster keeps its centroid. Stop when no centroid moves more than ε=1e-12 or at maxIter iterations (capped at 20).',
     signatures: {
       cpp: 'vector<int> kmeans(const vector<Pt>& pts, int k, int seed, int maxIter)',
       java: 'static int[] kmeans(Pt[] pts, int k, int seed, int maxIter)',
