@@ -5,7 +5,8 @@
  */
 
 import { useEffect } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { pageTitle } from '../lib/pageTitle';
 import { useAuth } from '../stores/auth';
 
 function navClass({ isActive }: { isActive: boolean }): string {
@@ -19,11 +20,16 @@ export function AppLayout() {
   const ready = useAuth((s) => s.ready);
   const { bootstrap, logout } = useAuth.getState();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   useEffect(() => {
     void bootstrap();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    document.title = pageTitle(pathname);
+  }, [pathname]);
 
   return (
     <div className="flex h-full flex-col">
